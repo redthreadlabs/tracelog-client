@@ -1,5 +1,6 @@
 import { EventBuilder } from './EventBuilder';
 import {
+  JsonValue,
   LogBatch,
   LogClientOptions,
   LogEventItem,
@@ -75,7 +76,7 @@ export class LogClient {
     return token;
   }
 
-  endTimer(token: TimerToken, context?: Record<string, string | number | boolean>): void {
+  endTimer(token: TimerToken, context?: Record<string, JsonValue>): void {
     const active = this._activeTimers.get(token.id);
     if (!active) return;
 

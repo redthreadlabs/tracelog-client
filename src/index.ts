@@ -8,4 +8,5 @@ export {
   TimerToken,
   LogClientOptions,
   LogLevel,
+  JsonValue,
 } from './types';

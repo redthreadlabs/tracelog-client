@@ -1,4 +1,4 @@
-import { LogEventItem, LogLevel } from './types';
+import { JsonValue, LogEventItem, LogLevel } from './types';
 
 export type EventEnqueuer = (event: LogEventItem) => void;
 
@@ -10,7 +10,7 @@ export class EventBuilder {
   private _message: string = '';
   private _duration?: number;
   private _error?: { message: string; type?: string; stack?: string };
-  private _params?: Record<string, string | number | boolean>;
+  private _params?: Record<string, JsonValue>;
 
   constructor(enqueue: EventEnqueuer, type: string) {
     this._enqueue = enqueue;
@@ -41,13 +41,13 @@ export class EventBuilder {
     return this;
   }
 
-  withParam(key: string, value: string | number | boolean): this {
+  withParam(key: string, value: JsonValue): this {
     if (!this._params) this._params = {};
     this._params[key] = value;
     return this;
   }
 
-  withParams(params: Record<string, string | number | boolean>): this {
+  withParams(params: Record<string, JsonValue>): this {
     if (!this._params) this._params = {};
     Object.assign(this._params, params);
     return this;

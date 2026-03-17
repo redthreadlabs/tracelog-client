@@ -1,3 +1,7 @@
+// ---- JSON value type (any valid JSON) ----
+
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 // ---- Log levels ----
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -27,7 +31,7 @@ export interface LogEventItem {
   /** Serialized error info (message, type, stack) */
   error?: { message: string; type?: string; stack?: string };
   /** Arbitrary key-value event data */
-  params?: Record<string, string | number | boolean>;
+  params?: Record<string, JsonValue>;
 }
 
 // ---- Perf timer item (span-shaped) ----
@@ -51,7 +55,7 @@ export interface TimerItem {
   duration: number;
   outcome: 'success' | 'failure' | 'unknown';
   context?: {
-    tags?: Record<string, string | number | boolean>;
+    tags?: Record<string, JsonValue>;
   };
 }
 
