@@ -9,6 +9,7 @@ export class EventBuilder {
   private _level: LogLevel = 'info';
   private _message: string = '';
   private _duration?: number;
+  private _error?: { message: string; type?: string; stack?: string };
   private _params?: Record<string, string | number | boolean>;
 
   constructor(enqueue: EventEnqueuer, type: string) {
@@ -52,6 +53,19 @@ export class EventBuilder {
     return this;
   }
 
+  withError(err: any): this {
+    if (err instanceof Error) {
+      this._error = { message: err.message };
+      if (err.name) this._error.type = err.name;
+      if (err.stack) this._error.stack = err.stack;
+    } else if (typeof err === 'string') {
+      this._error = { message: err };
+    } else if (err != null) {
+      this._error = { message: String(err) };
+    }
+    return this;
+  }
+
   withDuration(ms: number): this {
     this._duration = ms;
     return this;
@@ -65,6 +79,7 @@ export class EventBuilder {
       message: this._message,
     };
     if (this._duration !== undefined) event.duration = this._duration;
+    if (this._error) event.error = this._error;
     if (this._params) event.params = this._params;
     this._enqueue(event);
   }

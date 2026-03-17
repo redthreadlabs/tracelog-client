@@ -24,6 +24,8 @@ export interface LogEventItem {
   message: string;
   /** Duration in milliseconds (for timed events that aren't span-shaped) */
   duration?: number;
+  /** Serialized error info (message, type, stack) */
+  error?: { message: string; type?: string; stack?: string };
   /** Arbitrary key-value event data */
   params?: Record<string, string | number | boolean>;
 }

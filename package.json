@@ -1,6 +1,6 @@
 {
   "name": "@shaxpir/tracelog-client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Lightweight logging client for tracelog — works in React Native and browsers",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
