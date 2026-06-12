@@ -9,7 +9,7 @@ export class EventBuilder {
   private _level: LogLevel = 'info';
   private _message: string = '';
   private _duration?: number;
-  private _error?: { message: string; type?: string; stack?: string };
+  private _error?: { message: string; type?: string; code?: string; stack?: string };
   private _params?: Record<string, JsonValue>;
 
   constructor(enqueue: EventEnqueuer, type: string) {
@@ -55,8 +55,10 @@ export class EventBuilder {
 
   withError(err: any): this {
     if (err instanceof Error) {
-      this._error = { message: withCode(err.message, (err as any).code) };
+      this._error = { message: err.message };
       if (err.name) this._error.type = err.name;
+      const code = extractCode((err as any).code);
+      if (code !== undefined) this._error.code = code;
       if (err.stack) this._error.stack = err.stack;
     } else if (typeof err === 'string') {
       this._error = { message: err };
@@ -66,10 +68,12 @@ export class EventBuilder {
       const message = typeof err.message === 'string' && err.message.length > 0
         ? err.message
         : safeJson(err);
-      this._error = { message: withCode(message, err.code) };
+      this._error = { message };
       if (typeof err.name === 'string' && err.name.length > 0) {
         this._error.type = err.name;
       }
+      const code = extractCode(err.code);
+      if (code !== undefined) this._error.code = code;
       if (typeof err.stack === 'string') this._error.stack = err.stack;
     }
     return this;
@@ -94,12 +98,14 @@ export class EventBuilder {
   }
 }
 
-// Append an error code (ShareDB and Node errors carry one) to the message.
-function withCode(message: string, code: unknown): string {
+// Stringify an error code (ShareDB and Node errors carry one) for the
+// structured `error.code` field. Until 1.4.0 the code was appended to the
+// message text; a dedicated field is facetable downstream.
+function extractCode(code: unknown): string | undefined {
   if (typeof code === 'string' || typeof code === 'number') {
-    return `${message} (code: ${code})`;
+    return String(code);
   }
-  return message;
+  return undefined;
 }
 
 // Bounded JSON fallback for objects with no usable message property.

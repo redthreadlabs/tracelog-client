@@ -28,8 +28,10 @@ export interface LogEventItem {
   message: string;
   /** Duration in milliseconds (for timed events that aren't span-shaped) */
   duration?: number;
-  /** Serialized error info (message, type, stack) */
-  error?: { message: string; type?: string; stack?: string };
+  /** Serialized error info. `code` is the structured error code (ShareDB,
+   *  Node `err.code`, etc.) — facetable downstream, unlike a code folded
+   *  into the message text. */
+  error?: { message: string; type?: string; code?: string; stack?: string };
   /** Arbitrary key-value event data */
   params?: Record<string, JsonValue>;
 }
