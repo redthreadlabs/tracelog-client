@@ -1,4 +1,5 @@
 import { JsonValue, LogEventItem, LogLevel } from './types';
+import { tzOffsetMinutes } from './util';
 
 export type EventEnqueuer = (event: LogEventItem) => void;
 
@@ -90,6 +91,7 @@ export class EventBuilder {
       timestamp: Date.now(),
       level: this._level,
       message: this._message,
+      tz_offset: tzOffsetMinutes(),
     };
     if (this._duration !== undefined) event.duration = this._duration;
     if (this._error) event.error = this._error;

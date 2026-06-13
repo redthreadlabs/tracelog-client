@@ -69,3 +69,13 @@ test('withError without a code emits no code field', () => {
 
   assert.equal(sent[0].error.code, undefined);
 });
+
+test('send() stamps a numeric per-event tz_offset', () => {
+  const { sent, enqueue } = capture();
+  new EventBuilder(enqueue, 'app').info('hi').send();
+  const e = sent[0];
+  assert.equal(typeof e.tz_offset, 'number', 'tz_offset present and numeric');
+  // minutes east of UTC: within the real-world range
+  assert.ok(e.tz_offset >= -720 && e.tz_offset <= 840, 'plausible UTC offset');
+  assert.equal(e.tz_offset, -new Date().getTimezoneOffset(), 'matches the conventional sign');
+});

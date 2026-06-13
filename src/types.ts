@@ -1,81 +1,19 @@
-// ---- JSON value type (any valid JSON) ----
+import type { ClientInfo } from '@redthreadlabs/tracelog-schema';
 
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+// The wire-format types are the shared contract — re-exported from
+// @redthreadlabs/tracelog-schema so the client, the server's /logs endpoint,
+// and the viewer all share one definition (and gain new fields like the
+// per-event tz_offset without copying them around).
+export type {
+  JsonValue,
+  LogLevel,
+  LogBatch,
+  LogEventItem,
+  TimerItem,
+  ClientInfo,
+} from '@redthreadlabs/tracelog-schema';
 
-// ---- Log levels ----
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-// ---- Wire format: POST /logs request body ----
-
-export interface LogBatch {
-  client: ClientInfo;
-  user_id?: string;
-  session_ref?: string;
-  device_id?: string;
-  events: LogEventItem[];
-  timers: TimerItem[];
-}
-
-// ---- Individual event item ----
-
-export interface LogEventItem {
-  /** Event category, e.g. 'auth', 'billing', 'startup'. Default: 'client-log' */
-  type: string;
-  /** Epoch milliseconds */
-  timestamp: number;
-  level: LogLevel;
-  message: string;
-  /** Duration in milliseconds (for timed events that aren't span-shaped) */
-  duration?: number;
-  /** Serialized error info. `code` is the structured error code (ShareDB,
-   *  Node `err.code`, etc.) — facetable downstream, unlike a code folded
-   *  into the message text. */
-  error?: { message: string; type?: string; code?: string; stack?: string };
-  /** Arbitrary key-value event data */
-  params?: Record<string, JsonValue>;
-}
-
-// ---- Perf timer item (span-shaped) ----
-
-export interface TimerItem {
-  /** 16-char hex ID, generated client-side */
-  id: string;
-  /** 32-char hex trace ID, shared by parent + children */
-  trace_id: string;
-  /** ID of the root timer in this trace (for transaction_id on spans) */
-  root_id: string;
-  /** 16-char hex ID of parent timer (absent for root timers) */
-  parent_id?: string;
-  /** Operation name, e.g. 'content-store-startup' */
-  name: string;
-  /** Timer category. Default: 'client-perf' */
-  type: string;
-  /** Start time, epoch milliseconds */
-  timestamp: number;
-  /** Duration in milliseconds */
-  duration: number;
-  outcome: 'success' | 'failure' | 'unknown';
-  context?: {
-    tags?: Record<string, JsonValue>;
-  };
-}
-
-// ---- Client / device info (sent once per batch) ----
-
-export interface ClientInfo {
-  /** Application name, e.g. 'duiduidui-app' */
-  name: string;
-  /** Application version */
-  version: string;
-  os: { name: string; version: string };
-  device: { model?: string; brand?: string; type: string };
-  runtime: { name: string; version: string };
-  screen?: { width: number; height: number; pixel_ratio: number };
-  locale?: string;
-  timezone?: string;
-  device_year_class?: number;
-}
+// ---- Client-only types (the SDK surface, not part of the wire contract) ----
 
 // ---- Timer token (returned by startTimer) ----
 

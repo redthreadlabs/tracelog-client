@@ -1,4 +1,5 @@
 import { EventBuilder } from './EventBuilder';
+import { tzOffsetMinutes } from './util';
 import {
   JsonValue,
   LogBatch,
@@ -11,6 +12,8 @@ import {
 interface ActiveTimer {
   token: TimerToken;
   startTime: number;
+  /** minutes east of UTC at the timer's start (see tz_offset on the record) */
+  tzOffset: number;
   parentToken?: TimerToken;
   children: string[];
 }
@@ -59,6 +62,7 @@ export class LogClient {
     const active: ActiveTimer = {
       token,
       startTime: now(),
+      tzOffset: tzOffsetMinutes(),
       parentToken: parent,
       children: [],
     };
@@ -99,6 +103,7 @@ export class LogClient {
       timestamp: Math.round(active.startTime),
       duration: Math.round(duration),
       outcome: 'success',
+      tz_offset: active.tzOffset,
     };
 
     if (active.parentToken) {
