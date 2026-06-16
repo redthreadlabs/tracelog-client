@@ -21,6 +21,6 @@
     "typescript": "latest"
   },
   "dependencies": {
-    "@redthreadlabs/tracelog-schema": "^0.1.0"
+    "@redthreadlabs/tracelog-schema": "^0.2.0"
   }
 }
