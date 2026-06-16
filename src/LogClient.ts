@@ -5,21 +5,21 @@ import {
   LogBatch,
   LogClientOptions,
   LogEventItem,
-  TimerItem,
-  TimerToken,
+  LogPerfItem,
+  PerfToken,
 } from './types';
 
-interface ActiveTimer {
-  token: TimerToken;
+interface ActivePerf {
+  token: PerfToken;
   startTime: number;
-  /** minutes east of UTC at the timer's start (see tz_offset on the record) */
+  /** minutes east of UTC at the perf's start (see tz_offset on the record) */
   tzOffset: number;
-  parentToken?: TimerToken;
+  parentToken?: PerfToken;
   children: string[];
 }
 
-// Default constants (matching the original AppLogRecorder)
-const DEFAULT_FLUSH_INTERVAL_MS = 5000;
+// Defaults (all overridable via LogClientOptions)
+const DEFAULT_FLUSH_CADENCE_MS = 5000;
 const DEFAULT_MAX_BUFFER_SIZE = 100;
 const DEFAULT_MAX_CHUNK_SIZE = 50;
 const DEFAULT_MAX_CHUNK_BYTES = 512 * 1024;
@@ -32,17 +32,17 @@ export class LogClient {
 
   private _opts: Required<Pick<LogClientOptions, 'endpoint' | 'client'>> & LogClientOptions;
   private _eventBuffer: LogEventItem[] = [];
-  private _timerBuffer: TimerItem[] = [];
-  private _activeTimers: Map<string, ActiveTimer> = new Map();
-  private _flushTimer: ReturnType<typeof setInterval> | null = null;
-  private _persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private _perfBuffer: LogPerfItem[] = [];
+  private _activePerfs: Map<string, ActivePerf> = new Map();
+  private _flushHandle: ReturnType<typeof setInterval> | null = null;
+  private _persistHandle: ReturnType<typeof setTimeout> | null = null;
   private _disposed = false;
   private _flushing = false;
 
   constructor(opts: LogClientOptions) {
     this._opts = opts;
     this._loadPersistedLogs();
-    this._flushTimer = setInterval(() => this.flush(), opts.flushIntervalMs ?? DEFAULT_FLUSH_INTERVAL_MS);
+    this._flushHandle = setInterval(() => this.flush(), opts.flushCadenceMs ?? DEFAULT_FLUSH_CADENCE_MS);
   }
 
   // ---- Fluent event builder ----
@@ -53,13 +53,13 @@ export class LogClient {
 
   // ---- Perf timing ----
 
-  startTimer(name: string, parent?: TimerToken): TimerToken {
+  startPerf(name: string, parent?: PerfToken): PerfToken {
     const id = randomHex(16);
     const trace_id = parent ? parent.trace_id : randomHex(32);
     const root_id = parent ? parent.root_id : id;
 
-    const token: TimerToken = { id, trace_id, root_id, key: name };
-    const active: ActiveTimer = {
+    const token: PerfToken = { id, trace_id, root_id, name };
+    const active: ActivePerf = {
       token,
       startTime: now(),
       tzOffset: tzOffsetMinutes(),
@@ -67,11 +67,11 @@ export class LogClient {
       children: [],
     };
 
-    this._activeTimers.set(id, active);
+    this._activePerfs.set(id, active);
 
     // Register as child of parent
     if (parent) {
-      const parentActive = this._activeTimers.get(parent.id);
+      const parentActive = this._activePerfs.get(parent.id);
       if (parentActive) {
         parentActive.children.push(id);
       }
@@ -80,25 +80,25 @@ export class LogClient {
     return token;
   }
 
-  endTimer(token: TimerToken, context?: Record<string, JsonValue>): void {
-    const active = this._activeTimers.get(token.id);
+  endPerf(token: PerfToken, context?: Record<string, JsonValue>): void {
+    const active = this._activePerfs.get(token.id);
     if (!active) return;
 
     const duration = now() - active.startTime;
 
     // Auto-close children that haven't been ended yet
     for (const childId of active.children) {
-      const childActive = this._activeTimers.get(childId);
+      const childActive = this._activePerfs.get(childId);
       if (childActive) {
-        this.endTimer(childActive.token);
+        this.endPerf(childActive.token);
       }
     }
 
-    const timer: TimerItem = {
+    const perf: LogPerfItem = {
       id: token.id,
       trace_id: token.trace_id,
       root_id: token.root_id,
-      name: token.key,
+      name: token.name,
       type: 'client-perf',
       timestamp: Math.round(active.startTime),
       duration: Math.round(duration),
@@ -107,19 +107,19 @@ export class LogClient {
     };
 
     if (active.parentToken) {
-      timer.parent_id = active.parentToken.id;
+      perf.parent_id = active.parentToken.id;
     }
 
     if (context && Object.keys(context).length > 0) {
-      timer.context = { tags: context };
+      perf.context = { tags: context };
     }
 
-    this._timerBuffer.push(timer);
-    this._activeTimers.delete(token.id);
+    this._perfBuffer.push(perf);
+    this._activePerfs.delete(token.id);
     this._schedulePersist();
 
     // Force flush if buffer is getting large
-    if (this._timerBuffer.length + this._eventBuffer.length >= (this._opts.maxBufferSize ?? DEFAULT_MAX_BUFFER_SIZE)) {
+    if (this._perfBuffer.length + this._eventBuffer.length >= (this._opts.maxBufferSize ?? DEFAULT_MAX_BUFFER_SIZE)) {
       this.flush();
     }
   }
@@ -128,14 +128,14 @@ export class LogClient {
 
   async flush(): Promise<void> {
     if (this._disposed || this._flushing) return;
-    if (this._eventBuffer.length === 0 && this._timerBuffer.length === 0) return;
+    if (this._eventBuffer.length === 0 && this._perfBuffer.length === 0) return;
 
     this._flushing = true;
 
     try {
       const events = this._eventBuffer.splice(0);
-      const timers = this._timerBuffer.splice(0);
-      await this._sendInChunks(events, timers);
+      const perfs = this._perfBuffer.splice(0);
+      await this._sendInChunks(events, perfs);
     } finally {
       this._flushing = false;
       this._schedulePersist();
@@ -146,13 +146,13 @@ export class LogClient {
     if (this._disposed) return;
     this._disposed = true;
 
-    if (this._flushTimer) {
-      clearInterval(this._flushTimer);
-      this._flushTimer = null;
+    if (this._flushHandle) {
+      clearInterval(this._flushHandle);
+      this._flushHandle = null;
     }
-    if (this._persistTimer) {
-      clearTimeout(this._persistTimer);
-      this._persistTimer = null;
+    if (this._persistHandle) {
+      clearTimeout(this._persistHandle);
+      this._persistHandle = null;
     }
 
     // Persist anything remaining
@@ -173,27 +173,27 @@ export class LogClient {
 
   // ---- Internal: chunked sending ----
 
-  private async _sendInChunks(events: LogEventItem[], timers: TimerItem[]): Promise<void> {
+  private async _sendInChunks(events: LogEventItem[], perfs: LogPerfItem[]): Promise<void> {
     const maxChunkSize = this._opts.maxChunkSize ?? DEFAULT_MAX_CHUNK_SIZE;
     const maxChunkBytes = this._opts.maxChunkBytes ?? DEFAULT_MAX_CHUNK_BYTES;
 
-    // Combine events and timers into chunks that respect size limits
+    // Combine events and perfs into chunks that respect size limits
     let eventIdx = 0;
-    let timerIdx = 0;
+    let perfIdx = 0;
     let isFirstChunk = true;
 
-    while (eventIdx < events.length || timerIdx < timers.length) {
+    while (eventIdx < events.length || perfIdx < perfs.length) {
       if (!isFirstChunk) {
         await delay(INTER_CHUNK_DELAY_MS);
       }
       isFirstChunk = false;
 
       const chunkEvents: LogEventItem[] = [];
-      const chunkTimers: TimerItem[] = [];
+      const chunkPerfs: LogPerfItem[] = [];
       let estimatedBytes = 200; // base overhead for batch envelope
 
       // Fill chunk with events
-      while (eventIdx < events.length && chunkEvents.length + chunkTimers.length < maxChunkSize) {
+      while (eventIdx < events.length && chunkEvents.length + chunkPerfs.length < maxChunkSize) {
         const itemBytes = estimateJsonSize(events[eventIdx]);
         if (estimatedBytes + itemBytes > maxChunkBytes && chunkEvents.length > 0) break;
         chunkEvents.push(events[eventIdx]);
@@ -201,25 +201,25 @@ export class LogClient {
         eventIdx++;
       }
 
-      // Fill chunk with timers
-      while (timerIdx < timers.length && chunkEvents.length + chunkTimers.length < maxChunkSize) {
-        const itemBytes = estimateJsonSize(timers[timerIdx]);
-        if (estimatedBytes + itemBytes > maxChunkBytes && (chunkEvents.length + chunkTimers.length) > 0) break;
-        chunkTimers.push(timers[timerIdx]);
+      // Fill chunk with perfs
+      while (perfIdx < perfs.length && chunkEvents.length + chunkPerfs.length < maxChunkSize) {
+        const itemBytes = estimateJsonSize(perfs[perfIdx]);
+        if (estimatedBytes + itemBytes > maxChunkBytes && (chunkEvents.length + chunkPerfs.length) > 0) break;
+        chunkPerfs.push(perfs[perfIdx]);
         estimatedBytes += itemBytes;
-        timerIdx++;
+        perfIdx++;
       }
 
-      if (chunkEvents.length === 0 && chunkTimers.length === 0) break;
+      if (chunkEvents.length === 0 && chunkPerfs.length === 0) break;
 
-      await this._sendChunkWithRetry(chunkEvents, chunkTimers);
+      await this._sendChunkWithRetry(chunkEvents, chunkPerfs);
     }
   }
 
-  private async _sendChunkWithRetry(events: LogEventItem[], timers: TimerItem[]): Promise<void> {
+  private async _sendChunkWithRetry(events: LogEventItem[], perfs: LogPerfItem[]): Promise<void> {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        await this._sendChunk(events, timers);
+        await this._sendChunk(events, perfs);
         return;
       } catch (err) {
         if (attempt < MAX_RETRIES) {
@@ -227,18 +227,18 @@ export class LogClient {
         } else {
           // Max retries exceeded — put items back for persistence
           this._eventBuffer.push(...events);
-          this._timerBuffer.push(...timers);
+          this._perfBuffer.push(...perfs);
           this._schedulePersist();
         }
       }
     }
   }
 
-  private async _sendChunk(events: LogEventItem[], timers: TimerItem[]): Promise<void> {
+  private async _sendChunk(events: LogEventItem[], perfs: LogPerfItem[]): Promise<void> {
     const batch: LogBatch = {
       client: this._opts.client,
       events,
-      timers,
+      perfs,
     };
 
     const userId = this._opts.getUserId?.();
@@ -268,22 +268,22 @@ export class LogClient {
   // ---- Internal: persistence ----
 
   private _schedulePersist(): void {
-    if (this._persistTimer || !this._opts.persistLogs) return;
-    this._persistTimer = setTimeout(() => {
-      this._persistTimer = null;
+    if (this._persistHandle || !this._opts.persistLogs) return;
+    this._persistHandle = setTimeout(() => {
+      this._persistHandle = null;
       this._persistNow();
     }, PERSIST_DEBOUNCE_MS);
   }
 
   private _persistNow(): void {
     if (!this._opts.persistLogs) return;
-    if (this._eventBuffer.length === 0 && this._timerBuffer.length === 0) {
+    if (this._eventBuffer.length === 0 && this._perfBuffer.length === 0) {
       this._opts.persistLogs('').catch(() => {});
       return;
     }
     const data = JSON.stringify({
       events: this._eventBuffer,
-      timers: this._timerBuffer,
+      perfs: this._perfBuffer,
     });
     this._opts.persistLogs(data).catch(() => {});
   }
@@ -297,8 +297,8 @@ export class LogClient {
       if (Array.isArray(parsed.events)) {
         this._eventBuffer.push(...parsed.events);
       }
-      if (Array.isArray(parsed.timers)) {
-        this._timerBuffer.push(...parsed.timers);
+      if (Array.isArray(parsed.perfs)) {
+        this._perfBuffer.push(...parsed.perfs);
       }
       // Clear persisted data now that it's loaded
       this._opts.persistLogs?.('').catch(() => {});

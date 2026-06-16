@@ -9,23 +9,23 @@ export type {
   LogLevel,
   LogBatch,
   LogEventItem,
-  TimerItem,
+  LogPerfItem,
   ClientInfo,
 } from '@redthreadlabs/tracelog-schema';
 
 // ---- Client-only types (the SDK surface, not part of the wire contract) ----
 
-// ---- Timer token (returned by startTimer) ----
+// ---- Perf token (returned by startPerf) ----
 
-export interface TimerToken {
-  /** 16-char hex ID for this timer */
+export interface PerfToken {
+  /** 16-char hex ID for this perf */
   id: string;
-  /** 32-char hex trace ID (shared across the entire timer tree) */
+  /** 32-char hex trace ID (shared across the entire perf tree) */
   trace_id: string;
-  /** ID of the root timer in this trace */
+  /** ID of the root perf in this trace */
   root_id: string;
-  /** Key/name of the operation being timed */
-  key: string;
+  /** Name of the operation being measured */
+  name: string;
 }
 
 // ---- LogClient configuration ----
@@ -43,8 +43,8 @@ export interface LogClientOptions {
   getSessionRef?: () => string | undefined;
   /** Returns native device identifier */
   getDeviceId?: () => string | undefined;
-  /** Flush interval in ms. Default: 5000 */
-  flushIntervalMs?: number;
+  /** Flush cadence in ms. Default: 5000 */
+  flushCadenceMs?: number;
   /** Max events buffered before forced flush. Default: 100 */
   maxBufferSize?: number;
   /** Max events per HTTP request. Default: 50 */

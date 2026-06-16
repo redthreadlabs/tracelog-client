@@ -3,9 +3,9 @@ export { EventBuilder } from './EventBuilder';
 export {
   LogBatch,
   LogEventItem,
-  TimerItem,
+  LogPerfItem,
   ClientInfo,
-  TimerToken,
+  PerfToken,
   LogClientOptions,
   LogLevel,
   JsonValue,
