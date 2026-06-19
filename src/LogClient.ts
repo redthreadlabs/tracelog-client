@@ -5,9 +5,14 @@ import {
   LogBatch,
   LogClientOptions,
   LogEventItem,
+  LogLevel,
   LogPerfItem,
   PerfToken,
 } from './types';
+
+// Level ordering for the optional getMinLevel gate. An event is dropped when
+// its level ranks below the host-supplied minimum.
+const LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
 
 interface ActivePerf {
   token: PerfToken;
@@ -163,6 +168,12 @@ export class LogClient {
 
   private _enqueueEvent(event: LogEventItem): void {
     if (this._disposed) return;
+
+    // Level gate: drop events below the host-supplied minimum before they ever
+    // buffer, persist, or ship. No callback ⇒ emit everything (back-compat).
+    const minLevel = this._opts.getMinLevel?.();
+    if (minLevel && LEVEL_RANK[event.level] < LEVEL_RANK[minLevel]) return;
+
     this._eventBuffer.push(event);
     this._schedulePersist();
 

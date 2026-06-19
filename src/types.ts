@@ -1,4 +1,4 @@
-import type { ClientInfo } from '@redthreadlabs/tracelog-schema';
+import type { ClientInfo, LogLevel } from '@redthreadlabs/tracelog-schema';
 
 // The wire-format types are the shared contract — re-exported from
 // @redthreadlabs/tracelog-schema so the client, the server's /logs endpoint,
@@ -43,6 +43,13 @@ export interface LogClientOptions {
   getSessionRef?: () => string | undefined;
   /** Returns native device identifier */
   getDeviceId?: () => string | undefined;
+  /**
+   * Returns the minimum level to emit. Events whose level ranks below this
+   * (debug < info < warn < error) are dropped before buffering — they never
+   * persist or ship. Called once per event, so keep it cheap and synchronous.
+   * Omit to emit every level (default). Perfs are unaffected.
+   */
+  getMinLevel?: () => LogLevel;
   /** Flush cadence in ms. Default: 5000 */
   flushCadenceMs?: number;
   /** Max events buffered before forced flush. Default: 100 */
