@@ -129,6 +129,48 @@ export class LogClient {
     }
   }
 
+  /**
+   * Record a complete perf measurement in one call — for operations timed
+   * elsewhere (a pre-measured duration with no live start/end pair). Buffers a
+   * parent-less, root perf, which the server maps to a `transaction` record.
+   * Reach for startPerf/endPerf instead when you need a live span tree.
+   */
+  recordPerf(
+    name: string,
+    durationMs: number,
+    context?: Record<string, JsonValue>,
+    outcome: 'success' | 'failure' | 'unknown' = 'success',
+  ): void {
+    if (this._disposed) return;
+    if (!isFinite(durationMs) || durationMs < 0) durationMs = 0;
+
+    const id = randomHex(16);
+    const end = now();
+    const perf: LogPerfItem = {
+      id,
+      trace_id: randomHex(32),
+      root_id: id,
+      name,
+      type: 'client-perf',
+      // No live start time, so back-compute it from the measured duration.
+      timestamp: Math.round(end - durationMs),
+      duration: Math.round(durationMs),
+      outcome,
+      tz_offset: tzOffsetMinutes(),
+    };
+
+    if (context && Object.keys(context).length > 0) {
+      perf.context = { tags: context };
+    }
+
+    this._perfBuffer.push(perf);
+    this._schedulePersist();
+
+    if (this._perfBuffer.length + this._eventBuffer.length >= (this._opts.maxBufferSize ?? DEFAULT_MAX_BUFFER_SIZE)) {
+      this.flush();
+    }
+  }
+
   // ---- Transport ----
 
   async flush(): Promise<void> {
