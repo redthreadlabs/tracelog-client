@@ -79,3 +79,23 @@ test('send() stamps a numeric per-event tz_offset', () => {
   assert.ok(e.tz_offset >= -720 && e.tz_offset <= 840, 'plausible UTC offset');
   assert.equal(e.tz_offset, -new Date().getTimezoneOffset(), 'matches the conventional sign');
 });
+
+test('withLabel/withLabels populate context.labels', () => {
+  const { sent, enqueue } = capture();
+  new EventBuilder(enqueue, 'app').info('hi').withLabel('a', 1).withLabels({ b: 'two' }).send();
+  assert.deepEqual(sent[0].context, { labels: { a: 1, b: 'two' } });
+});
+
+test('send() with no labels has no context', () => {
+  const { sent, enqueue } = capture();
+  new EventBuilder(enqueue, 'app').info('hi').send();
+  assert.equal(sent[0].context, undefined);
+});
+
+test('send() stamps an epoch-microsecond timestamp', () => {
+  const { sent, enqueue } = capture();
+  const before = Date.now() * 1000;
+  new EventBuilder(enqueue, 'app').info('hi').send();
+  const after = Date.now() * 1000;
+  assert.ok(sent[0].timestamp >= before - 5000 && sent[0].timestamp <= after + 5000, 'µs-scale timestamp');
+});

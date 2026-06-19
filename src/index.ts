@@ -1,11 +1,17 @@
-export { LogClient } from './LogClient';
+export { TracelogClient, Transaction, Span } from './TracelogClient';
 export { EventBuilder } from './EventBuilder';
 export {
-  LogBatch,
-  LogEventItem,
-  LogPerfItem,
-  ClientInfo,
-  PerfToken,
+  RecordBatch,
+  EventRecord,
+  TransactionRecord,
+  SpanRecord,
+  RecordContext,
+  RecordOrigin,
+  RecordKind,
+  Outcome,
+  StartOptions,
+  EndOptions,
+  RecordOptions,
   LogClientOptions,
   LogLevel,
   JsonValue,

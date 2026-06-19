@@ -1,18 +1,18 @@
 'use strict';
 
-// Tests for the LogClient level gate (getMinLevel). Runs against compiled
+// Tests for the TracelogClient level gate (getMinLevel). Runs against compiled
 // dist/ — `npm run build` first, which `npm test` does via pretest.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { LogClient } = require('../dist/LogClient');
+const { TracelogClient } = require('../dist/TracelogClient');
 
 function makeClient(opts = {}) {
-  return new LogClient({
+  return new TracelogClient({
     endpoint: 'http://localhost/never-called',
     getAuthHeaders: () => ({}),
-    client: { name: 'test', version: '0.0.0', os: { name: 'test', version: '0' }, device: { type: 'phone' }, runtime: { name: 'node', version: '0' } },
+    getOrigin: () => ({ service: { name: 'test', version: '0.0.0' }, runtime: { name: 'node', version: '0' } }),
     // Large flush cadence so nothing flushes during the synchronous test.
     flushCadenceMs: 1_000_000,
     ...opts,

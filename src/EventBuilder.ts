@@ -1,7 +1,7 @@
-import { JsonValue, LogEventItem, LogLevel } from './types';
+import { JsonValue, EventRecord, LogLevel } from './types';
 import { tzOffsetMinutes } from './util';
 
-export type EventEnqueuer = (event: LogEventItem) => void;
+export type EventEnqueuer = (event: EventRecord) => void;
 
 export class EventBuilder {
 
@@ -9,9 +9,8 @@ export class EventBuilder {
   private _type: string;
   private _level: LogLevel = 'info';
   private _message: string = '';
-  private _duration?: number;
   private _error?: { message: string; type?: string; code?: string; stack?: string };
-  private _params?: Record<string, JsonValue>;
+  private _labels?: Record<string, JsonValue>;
 
   constructor(enqueue: EventEnqueuer, type: string) {
     this._enqueue = enqueue;
@@ -42,15 +41,15 @@ export class EventBuilder {
     return this;
   }
 
-  withParam(key: string, value: JsonValue): this {
-    if (!this._params) this._params = {};
-    this._params[key] = value;
+  withLabel(key: string, value: JsonValue): this {
+    if (!this._labels) this._labels = {};
+    this._labels[key] = value;
     return this;
   }
 
-  withParams(params: Record<string, JsonValue>): this {
-    if (!this._params) this._params = {};
-    Object.assign(this._params, params);
+  withLabels(labels: Record<string, JsonValue>): this {
+    if (!this._labels) this._labels = {};
+    Object.assign(this._labels, labels);
     return this;
   }
 
@@ -80,29 +79,22 @@ export class EventBuilder {
     return this;
   }
 
-  withDuration(ms: number): this {
-    this._duration = ms;
-    return this;
-  }
-
   send(): void {
-    const event: LogEventItem = {
+    const event: EventRecord = {
       type: this._type,
-      timestamp: Date.now(),
+      timestamp: Date.now() * 1000, // epoch microseconds (the on-disk unit)
       level: this._level,
       message: this._message,
       tz_offset: tzOffsetMinutes(),
     };
-    if (this._duration !== undefined) event.duration = this._duration;
     if (this._error) event.error = this._error;
-    if (this._params) event.params = this._params;
+    if (this._labels) event.context = { labels: this._labels };
     this._enqueue(event);
   }
 }
 
 // Stringify an error code (ShareDB and Node errors carry one) for the
-// structured `error.code` field. Until 1.4.0 the code was appended to the
-// message text; a dedicated field is facetable downstream.
+// structured `error.code` field — a dedicated field is facetable downstream.
 function extractCode(code: unknown): string | undefined {
   if (typeof code === 'string' || typeof code === 'number') {
     return String(code);
