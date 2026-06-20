@@ -328,9 +328,7 @@ export class TracelogClient {
     batch.lifetime_id = this._lifetimeId;
 
     const userId = this._opts.getUserId?.();
-    const deviceId = this._opts.getDeviceId?.();
     if (userId) batch.user_id = userId;
-    if (deviceId) batch.device_id = deviceId;
     if (origin) batch.origin = origin;
 
     const headers = await Promise.resolve(this._opts.getAuthHeaders());

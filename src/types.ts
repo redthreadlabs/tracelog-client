@@ -55,8 +55,6 @@ export interface LogClientOptions {
   getOrigin: () => RecordOrigin;
   /** Returns current user ID, if logged in (→ batch.user_id). */
   getUserId?: () => string | undefined;
-  /** Returns the consumer's opaque device/installation id (→ batch.device_id). */
-  getDeviceId?: () => string | undefined;
   /** Returns the UI locale at event time; stamped onto each event. */
   getLocale?: () => string | undefined;
   /**
