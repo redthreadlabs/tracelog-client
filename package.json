@@ -2,15 +2,30 @@
   "name": "@redthreadlabs/tracelog-client",
   "version": "2.1.1",
   "description": "Lightweight logging client for tracelog — works in React Native and browsers",
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
+  "keywords": [
+    "tracelog",
+    "apm",
+    "telemetry",
+    "logging",
+    "react-native",
+    "browser"
+  ],
+  "homepage": "https://github.com/redthreadlabs/tracelog-client#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redthreadlabs/tracelog-client.git"
   },
+  "license": "BSD-2-Clause",
+  "author": "Benji Smith <benji@redthreadlabs.com>",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
