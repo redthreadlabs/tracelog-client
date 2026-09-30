@@ -1,6 +1,6 @@
 {
   "name": "@redthreadlabs/tracelog-client",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Lightweight logging client for tracelog — works in React Native and browsers",
   "keywords": [
     "tracelog",
@@ -37,6 +37,6 @@
     "typescript": "latest"
   },
   "dependencies": {
-    "@redthreadlabs/tracelog-schema": "^0.5.1"
+    "@redthreadlabs/tracelog-schema": "^0.6.0"
   }
 }

@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@redthreadlabs/tracelog-schema';
 import { EventBuilder } from './EventBuilder';
 import { tzOffsetMinutes } from './util';
 import {
@@ -243,7 +244,7 @@ export class TracelogClient {
     const oj = JSON.stringify(origin);
     if (oj === this._lastOriginJson) return undefined;
     this._lastOriginJson = oj;
-    return { ...origin, lifetime_id: this._lifetimeId };
+    return { ...origin, schema: SCHEMA_VERSION, lifetime_id: this._lifetimeId };
   }
 
   // ---- Internal: chunked sending ----
