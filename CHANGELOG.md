@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.4
+
+- deps: `@redthreadlabs/tracelog-schema` ^0.6.0 -> ^0.7.0; the origin's
+  `schema` is "0.7.0".
+
 ## 2.1.3
 
 - deps: `@redthreadlabs/tracelog-schema` ^0.5.1 -> ^0.6.0.

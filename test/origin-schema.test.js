@@ -27,7 +27,7 @@ test('the origin a batch carries names the schema version it was written against
     const origin = sent.find((b) => b.origin)?.origin;
     assert.ok(origin, 'the first batch carries the origin');
     assert.equal(origin.schema, SCHEMA_VERSION);
-    assert.equal(origin.schema, '0.6.0');
+    assert.equal(origin.schema, '0.7.0');
     assert.equal(origin.lifetime_id, client._lifetimeId);
   } finally {
     client.dispose();
